@@ -11,7 +11,7 @@ class CreateCartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'cart', 'product', 'quantity']
+        fields = ['id', 'create_at']
 
 
 class CartItemProductSerializer(serializers.ModelSerializer):
@@ -26,10 +26,9 @@ class CartItemSerializer(serializers.ModelSerializer):
         method_name='get_total_price'
     )
 
-
     class Meta:
         model = CartItem
-        fields = ['id', 'product', 'quantity','total_price']
+        fields = ['id', 'product', 'quantity', 'total_price']
 
     def get_total_price(self, cart_items: CartItem):
         return cart_items.product.price * cart_items.quantity
@@ -44,10 +43,10 @@ class CartSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Cart
-        fields = ['id', 'items','total_price']
+        fields = ['id', 'items', 'total_price']
 
     def get_total_price(self, cart: Cart):
-       return sum ([item.quantity * item.price for item in cart.items.all()] )
+        return sum([item.quantity * item.price for item in cart.items.all()])
 
 
 class CollectionSerializer(serializers.ModelSerializer):
@@ -99,9 +98,10 @@ class ReviewSerializer(serializers.ModelSerializer):
         fields = ['id', 'product', 'name', 'customer', 'content']
 
 
-class CartProductSerializer (serializers.ModelSerializer):
+class CartProductSerializer(serializers.ModelSerializer):
     class Meta:
         fields = ['title', 'description', 'price']
+
 
 class AddToCartSerializer(serializers.ModelSerializer):
     product_id = serializers.IntegerField()
@@ -123,10 +123,12 @@ class AddToCartSerializer(serializers.ModelSerializer):
         model = CartItem
         fields = ['id', 'product_id', 'quantity']
 
+
 class UpdateCartItem(serializers.ModelSerializer):
     class Meta:
         model = CartItem
         fields = ['quantity']
+
 
 class OrderItemSerializer(serializers.ModelSerializer):
     product = CartProductSerializer()
@@ -142,6 +144,8 @@ class OrderSerializer(serializers.ModelSerializer):
     class Meta:
         model = Order
         fields = ['id', 'place_at', 'payment_status', 'customer', 'order_item']
+
+
 class CreateOrderSerializer(serializers.Serializer):
     cart_id = serializers.IntegerField()
 

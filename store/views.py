@@ -13,11 +13,13 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework_nested.routers import NestedDefaultRouter
 
+
 from store.filter import ProductFilter
 from store.models import Product, Collection, Review, Cart, Order, CartItem
+from .permissions import IsAdminOrReadOnly
 from .serilizers import (ProductSerializer, CollectionSerializer, CreateProductSerialization, ReviewSerializer,
                          CartSerializer, CreateCollectionSerialization, CreateCartSerializer, CreateOrderSerializer,
-                         OrderSerializer, CartItemSerializer, UpdateCartItem, AddToCartSerializer)
+                         OrderSerializer, AddToCartSerializer, UpdateCartItem, CartItemSerializer)
 
 
 # Views is also the service.nm
@@ -49,22 +51,22 @@ class ReviewViewSet(ModelViewSet):
     serializer_class = ReviewSerializer
 
     def get_queryset(self):
-        return Review.objects.filter(product_id= self.kwargs['product_pk'])
+        return Review.objects.filter(product_id=self.kwargs['product_pk'])
 
 
 class ProductViewSet(ModelViewSet):
-    queryset = Product.objects.select_related('collection').all()
-    serializer_class = ProductSerializer
-    filter_backends = (DjangoFilterBackend)
-    filterSet_field = ProductFilter
-    pagination_class = PageNumberPagination
+    queryset = Product.objects.all()
+    filter_backends = [DjangoFilterBackend]
+    filterSet_class = ProductFilter
+    permission_classes = [IsAdminOrReadOnly]
 
-    # def get_queryset(self):
-    #     collection_id = self.request.query_params.get('collection_id')
-    #     name = self.request.query_params.get('name')
-    #
-    #     queryset = Product.objects.filter(collection_id=collection_id)
-    #     queryset.filter(name=name)
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return ProductSerializer
+        elif self.request.method == 'POST':
+            return CreateProductSerialization
+        return ProductSerializer
+
 
 class ProductCreate(CreateModelMixin):
     queryset = Product.objects.all()
@@ -121,10 +123,27 @@ def product_details(request, pk):
         return Response(data={"message": f"Product with {pk} deleted"})
 
 
+class CartItemViewSet(ModelViewSet):
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_queryset(self):
+        return CartItem.objects.filter(cart_id=self.kwargs['cart_pk'])
+
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return AddToCartSerializer
+        if self.request.method == 'PATCH':
+            return UpdateCartItem
+        return CartItemSerializer
+
+    def get_serializer_context(self):
+        return {"cart_id": self.kwargs['cart_pk']}
+
+
 @api_view()
 def collection_list(request):
-    collections = Collection.objects.all()
-    serializer = CollectionSerializer(collections, many=True)
+    collection = Collection.objects.all()
+    serializer = CollectionSerializer(collection, many=True)
     return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -140,8 +159,7 @@ class CartViewSet(CreateModelMixin,
                   GenericViewSet,
                   RetrieveModelMixin):
     # created_at = models.DataTimeField(auto_now=True)
-    queryset = Cart.objects.prefetch_related('item__product').all()
-    serializer_class = CartSerializer
+    queryset = Cart.objects.all()
 
     def get_serializer_class(self):
         if self.request.method == 'GET':
@@ -164,20 +182,3 @@ class OrderViewSet(ModelViewSet):
 
     def get_serializer_context(self):
         return {'user_id': self.request.user.id}
-
-
-class CartItemViewSet(ModelViewSet):
-    http_method_names = ['get', 'post', 'patch', 'delete']
-
-    def get_queryset(self):
-        return CartItem.objects.filter(cart_id=self.kwargs['cart_pk'])
-
-    def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return AddToCartSerializer
-        if self.request.method == 'PATCH':
-            return UpdateCartItem
-        return CartItemSerializer
-
-    def get_serializer_context(self):
-        return {"cart_id": self.kwargs['cart_pk']}
